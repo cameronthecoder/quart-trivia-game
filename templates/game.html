@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game ({{game.id}}): Waiting for players...</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bulma-0.9.0/css/bulma.min.css') }}">
+</head>
+<body>
+    <section class="hero is-success is-fullheight">
+        <div class="hero-body">
+          <div class="container">
+            <div class="card column is-half is-offset-one-quarter">
+                <div class="card-content">
+                  <p class="title has-text-dark has-text-centered" id="title">
+                    Welcome to the game! <strong>Waiting for players...</strong>
+                  </p>
+                  <progress class="progress is-small is-primary" max="30" id="progress">15%</progress>
+                  <p class="subtitle has-text-centered has-text-dark" id="current_question_text"></p>
+                  <div class="notification is-success is-hidden" id="message">Correct!</div>
+                  <div id="info">
+                    <p class="has-text-centered" id="game_id">Game ID: <code>{{game.id}}</code></p>
+                    <p class="has-text-centered" id="players_connected">Players connected: <code id="players">0</code></p>
+                  </div>
+                  <div id="choices">
+                    
+                  </div>
+                  <button class="button is-primary" id="start">Start</button>
+                </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <script>
+          const gameID = "{{game.id}}";
+      </script>
+      <script src="{{ url_for('static', filename='game.js') }}"></script>
+</body>
+</html>
