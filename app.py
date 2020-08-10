@@ -7,7 +7,7 @@ app = Quart(__name__)
 games = set()
 
 
-def get_game(id):
+def get_game(id: int):
     global games
     for game in games:
         if game.id == id: return game
@@ -35,18 +35,15 @@ async def index():
 @app.route('/api/games/')
 async def games_json():
     global games
-    json_list = []
-    for game in games: 
-        if not game.private:
-            json_list.append(game.to_json())
-    return jsonify(json_list)
-
+    return jsonify([game.to_json() for game in games if not game.private])
 
 @app.route('/game/<int:id>/')
 async def game(id):
     current_game = get_game(id)
-    if not current_game: abort(404)
-    if current_game.status == "in_progress": return redirect(url_for('index'))
+    if not current_game: 
+        abort(404)
+    if current_game.status == "in_progress": 
+        return redirect(url_for('index'))
     return await render_template('game.html', game=current_game)
 
 
@@ -55,71 +52,55 @@ async def ws_v2(id):
     global games
     current_game = get_game(id)
     if not current_game: abort(404)
+    ws = websocket._get_current_object()
     try:
         while True:
             data = await websocket.receive()
             json_data = json.loads(data)
 
             if json_data["type"] == "connect": # Client connected
-                current_game.add_player(json_data["username"], websocket._get_current_object())
+                username = json_data["username"]
+                player = current_game.add_player(username, ws)
                 await current_game.send_game_state()
+                await current_game.send_join_event(ws, player.username)
             elif json_data["type"] == "start":
-                app.logger.debug('started')
                 if current_game.player_count > 1 and current_game.status == "waiting":
-                    await current_game.broadcast(json.dumps({
-                        "event": {
-                            "type": "start"
-                        }
-                    }))
-                    current_game.status = "in_progress"
+                    await current_game.start()
                     questions = current_game.questions
                     await asyncio.sleep(3)
-
                     @copy_current_websocket_context
                     async def background_task():
-                        current_question_id = 0
                         for question in questions['results']:
                             # Send question to all players as a question event and allow 30 seconds
                             # for each player to answer.
-                            current_game.current_question = question
-                            current_question_id += 1
-                            choices = []
-                            for incorrect_answer in question["incorrect_answers"]: choices.append(incorrect_answer)
-                            choices.append(question["correct_answer"])
-                            random.shuffle(choices)
-                            await current_game.broadcast(json.dumps({
-                                "event": {
-                                    "type": "question",
-                                    "question": {
-                                        "question": question["question"],
-                                        "total_questions": current_game.amount,
-                                        "current_question_id": current_question_id,
-                                        "choices": choices
-                                    }
-                                }
-                            }))
+                            await current_game.send_question(question)
                             await asyncio.sleep(30)
                         current_game.status = "finished"
-                        print(current_game.status)
                         await current_game.send_game_state()
-                        print(current_game.player_scores)
                     asyncio.ensure_future(background_task())
             elif json_data["type"] == "answer":
-                player = current_game.get_player(websocket._get_current_object())
+                player = current_game.get_player(ws)
                 if json_data["choice"] == current_game.current_question["correct_answer"]:
                     player.add_point()
-                    await player.socket.send(json.dumps({"event": {"type": "choice_response", "result": "correct"}}))
+                    await player.send_choice_response("correct")
                 else:
-                    await player.socket.send(json.dumps({"event": {"type": "choice_response", "result": "not_correct", "correct_answer": current_game.current_question["correct_answer"]}}))
+                    await player.send_choice_response("not_correct", current_game.current_question["correct_answer"])
                 app.logger.debug(f'Player {player.username} now has {player.points} points.')
+
     except asyncio.CancelledError:
-        app.logger.debug(f'Client disconnected from game (ID: {current_game.id})')
-        current_game.remove_player(websocket._get_current_object())
+        player = current_game.get_player(ws)
+        app.logger.debug(f'Player {player.username} disconnected from Game (ID: {current_game.id})')
+        current_game.remove_player(ws)
+        if player.host and current_game.player_count != 0:
+            current_game.assign_new_host()
+            await current_game.send_host_notification()
+            app.logger.debug(f'Game (ID {current_game.id}) switched hosts to {current_game.host.username}')
         await current_game.send_game_state()
+        await current_game.send_leave_event(player.username)
         if current_game.player_count == 0:
             games.remove(current_game)
             app.logger.debug(f'Game (ID: {current_game.id}) removed from memory.')
             
         
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0")
+    app.run(debug=True)

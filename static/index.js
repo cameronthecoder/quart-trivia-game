@@ -55,7 +55,7 @@ async function getCurrentGames() {
                         break;
                     case 6:
                         console.log('are we here?')
-                        if (game.status != "in_progress") {
+                        if (game.status != "in_progress" || game.status != "finished") {
                             let td7 = document.createElement('td');
                             td7.innerHTML = `<a href="/game/${game.id}/" class="button is-link">Join</a>`;
                             tr.appendChild(td7);
@@ -68,7 +68,7 @@ async function getCurrentGames() {
     last_fetch_result = games;
   }
 
-document.addEventListener('DOMContentLoaded', (e) => {
+document.addEventListener('DOMContentLoaded', () => {
     getCurrentGames().catch(error => {
         console.log(error);
     });
