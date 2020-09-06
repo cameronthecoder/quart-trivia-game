@@ -42,7 +42,8 @@ class Game:
         9: "General Knowledge",
         23: "History",
         27: "Animals",
-        17: "Science & Nature"
+        17: "Science & Nature",
+        0: "Custom JSON file"
     }
 
     def __init__(self, category, amount, difficulty, private=None):
@@ -200,13 +201,18 @@ class Game:
             await player.socket.send(message)
     
     async def generate_questions(self):
-        # TODO: ADD CUSTOM OPTION FOR JSON FILE
-        """Generate trivia questions based on the data provided when the class was instantiated."""
-        url = "https://opentdb.com/api.php"
-        params = {"amount": self.amount, "category": self.category, "difficulty": self.difficulty}
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params) as resp:
-                self.questions = await resp.json()
+        if self.category == "0":
+            # Load questions
+            file = open('example.json', 'r')
+            self.questions = json.load(file)
+            self.amount = len(self.questions['results'])
+        else:
+            """Generate trivia questions based on the data provided when the class was instantiated."""
+            url = "https://opentdb.com/api.php"
+            params = {"amount": self.amount, "category": self.category, "difficulty": self.difficulty}
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params) as resp:
+                    self.questions = await resp.json()
 
     @property
     def player_count(self): return len(self.players)

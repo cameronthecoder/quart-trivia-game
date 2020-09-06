@@ -1,0 +1,13 @@
+{
+    "results": [
+        {
+            "question": "Example Question",
+            "correct_answer": "Correct Answer",
+            "incorrect_answers": [
+                "Incorrect Answer 1",
+                "Incorrect Answer 2",
+                "Incorrect Answer 3"
+            ]
+        }
+    ]
+}
