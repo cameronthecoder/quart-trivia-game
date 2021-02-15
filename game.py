@@ -1,22 +1,26 @@
-import aiohttp, json, random
+import aiohttp
+import json
+import random
 from quart.asgi import Websocket
+
 
 def generate_random_id():
     range_start = 10**(4-1)
     range_end = (10**4)-1
     return random.randint(range_start, range_end)
 
+
 class Player:
-    def __init__(self, username, socket: Websocket, host = False):
+    def __init__(self, username, socket: Websocket, host=False):
         self.username = username
         self.socket = socket
         self.host = host
         self.points = 0
 
-    async def send_choice_response(self, result, correct_answer = None):
+    async def send_choice_response(self, result, correct_answer=None):
         if correct_answer:
             await self.socket.send(json.dumps({
-                "event":{
+                "event": {
                     "type": "choice_response",
                     "result": "not_correct",
                     "correct_answer": correct_answer
@@ -35,7 +39,7 @@ class Player:
 
 
 class Game:
-    categories = { 
+    categories = {
         # To add a category, go to https://opentdb.com/api_config.php and inspect the select category field
         # and you should see all of the categories with their corresponding ID.
         18: "Computer Science",
@@ -68,7 +72,7 @@ class Game:
                         "username": username
                     }
                 }))
-    
+
     async def send_leave_event(self, username):
         await self.broadcast(json.dumps({
             "event": {
@@ -76,7 +80,7 @@ class Game:
                 "username": username
             }
         }))
-    
+
     # TODO: send host notification
 
     async def send_host_notification(self):
@@ -101,7 +105,7 @@ class Game:
 
         Args:
             username (str): The username of the player
-            socket (Websocket): The player's WebSocket connection.
+            socket (Websocket): The player's Websocket connection.
         """
         host = True if self.player_count == 0 else False
         player = Player(username, socket, host)
@@ -113,7 +117,7 @@ class Game:
         new_host = self.get_player(random_sample_list[0].socket)
         new_host.host = True
         return new_host
-        
+
     def get_player_by_username(self, username) -> Player:
         for player in self.players:
             if player.username == username:
@@ -133,7 +137,7 @@ class Game:
     async def send_game_state(self):
         await self.broadcast(json.dumps({
             "event": {
-                "type": "info", 
+                "type": "info",
                 "clients_connected": str(self.player_count),
                 "status": self.status,
                 "players": self.player_scores
@@ -144,7 +148,7 @@ class Game:
         self.current_question = question
         self.current_question_id += 1
         choices = []
-        for incorrect_answer in question["incorrect_answers"]: 
+        for incorrect_answer in question["incorrect_answers"]:
             choices.append(incorrect_answer)
         choices.append(question["correct_answer"])
         random.shuffle(choices)
@@ -199,7 +203,7 @@ class Game:
         """
         for player in self.players:
             await player.socket.send(message)
-    
+
     async def generate_questions(self):
         if self.category == "0":
             # Load questions
@@ -209,8 +213,9 @@ class Game:
         else:
             """Generate trivia questions based on the data provided when the class was instantiated."""
             url = "https://opentdb.com/api.php"
-            params = {"amount": self.amount, "category": self.category, "difficulty": self.difficulty}
-            async with aiohttp.ClientSession() as session:
+            params = {"amount": self.amount,
+                      "category": self.category, "difficulty": self.difficulty}
+            async with aiohttp.ClientSession(headers={'Connection': 'keep-alive'}) as session:
                 async with session.get(url, params=params) as resp:
                     self.questions = await resp.json()
 
