@@ -1,3 +1,4 @@
 Quart
 Quart-CORS
 aiohttp
+uvicorn
