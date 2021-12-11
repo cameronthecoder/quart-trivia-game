@@ -23,7 +23,7 @@ let Game = {
     },
     status: null,
     init () {
-        this.socket = new WebSocket(`ws://${window.location.host}${window.location.pathname}`);
+        this.socket = new WebSocket(`wss://${window.location.host}${window.location.pathname}`);
         this.socket.addEventListener('open', e => this.onSocketOpen(e));  
         this.eventHandler = new EventHandler(this);
         this.socket.addEventListener('message', e => this.onSocketMessage(e));
